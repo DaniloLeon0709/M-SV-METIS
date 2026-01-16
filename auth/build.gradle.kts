@@ -25,4 +25,10 @@ dependencies {
     implementation(libs.retrofit.serialization)
     implementation(libs.okhttp)
     implementation(libs.serialization.json)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(kotlin("test"))
 }
