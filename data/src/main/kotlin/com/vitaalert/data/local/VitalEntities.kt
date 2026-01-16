@@ -38,7 +38,8 @@ data class DeviceEntity(
 @Entity(tableName = "pending_uploads")
 data class PendingUploadEntity(
     @PrimaryKey val id: String,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val sent: Boolean = false
 )
 
 /**

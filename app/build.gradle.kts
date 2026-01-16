@@ -57,4 +57,5 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.mpandroidchart)
+    implementation(libs.androidx.work.runtime)
 }
