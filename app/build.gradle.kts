@@ -2,7 +2,7 @@ plugins {
     id("com.android.application")
     kotlin("android")
     kotlin("kapt")
-    id("dagger.hilt.android.plugin")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -64,6 +64,7 @@ dependencies {
 
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("com.google.dagger:hilt-android:2.51.1")
+    implementation("com.google.android.material:material:1.12.0")
     kapt("com.google.dagger:hilt-compiler:2.51.1")
 
     implementation("androidx.work:work-runtime-ktx:2.9.1")
