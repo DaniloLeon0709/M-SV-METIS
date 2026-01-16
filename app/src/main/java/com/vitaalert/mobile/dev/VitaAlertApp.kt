@@ -1,10 +1,10 @@
-package com.vitaalert.app
+package com.vitaalert.mobile.dev
 
 import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.vitaalert.app.work.TelemetryUploadWorker
+import com.vitaalert.mobile.dev.work.TelemetryUploadWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 

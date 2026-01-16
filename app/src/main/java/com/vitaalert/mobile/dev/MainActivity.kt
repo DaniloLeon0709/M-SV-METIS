@@ -1,4 +1,4 @@
-package com.vitaalert.app
+package com.vitaalert.mobile.dev
 
 import android.content.Intent
 import android.os.Bundle
@@ -15,8 +15,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.vitaalert.app.ui.MainViewModel
-import com.vitaalert.app.monitor.MonitoringService
+import com.vitaalert.mobile.dev.ui.MainViewModel
+import com.vitaalert.mobile.dev.monitor.MonitoringService
 import com.vitaalert.designsystem.VitaAlertTheme
 
 /**

@@ -1,4 +1,4 @@
-package com.vitaalert.app.monitor
+package com.vitaalert.mobile.dev.monitor
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.vitaalert.ble.BleMonitor
-import com.vitaalert.app.R
+import com.vitaalert.mobile.dev.R
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

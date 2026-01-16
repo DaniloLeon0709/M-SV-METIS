@@ -1,4 +1,4 @@
-package com.vitaalert.app.work
+package com.vitaalert.mobile.dev.work
 
 import android.content.Context
 import androidx.work.CoroutineWorker

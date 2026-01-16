@@ -1,4 +1,4 @@
-package com.vitaalert.app.ui
+package com.vitaalert.mobile.dev.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

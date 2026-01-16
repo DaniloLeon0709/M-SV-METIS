@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.vitaalert.app"
+    namespace = "com.vitaalert.mobile.dev"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.vitaalert.app"
+        applicationId = "com.vitaalert.mobile.dev"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -52,10 +52,11 @@ dependencies {
     implementation(project(":reports"))
 
     implementation("androidx.activity:activity-compose:1.9.2")
-    implementation("androidx.compose.ui:ui:1.7.1")
-    implementation("androidx.compose.material3:material3:1.3.0")
-    implementation("androidx.compose.ui:ui-tooling-preview:1.7.1")
-    debugImplementation("androidx.compose.ui:ui-tooling:1.7.1")
+    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
