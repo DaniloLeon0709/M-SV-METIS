@@ -1,6 +1,8 @@
 package com.vitaalert.auth.storage
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.vitaalert.auth.model.AuthTokensDto
@@ -11,13 +13,18 @@ import com.vitaalert.auth.model.AuthTokensDto
 class TokenStorage(
     context: Context
 ) {
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        FILE_NAME,
-        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val sharedPreferences: SharedPreferences = runCatching {
+        EncryptedSharedPreferences.create(
+            context,
+            FILE_NAME,
+            MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrElse { error ->
+        Log.e(TAG, "Falling back to unencrypted preferences.", error)
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    }
 
     /**
      * Returns the stored access token, if available.
@@ -53,5 +60,6 @@ class TokenStorage(
         const val FILE_NAME = "vitaalert_auth"
         const val KEY_ACCESS = "access_token"
         const val KEY_REFRESH = "refresh_token"
+        const val TAG = "TokenStorage"
     }
 }
