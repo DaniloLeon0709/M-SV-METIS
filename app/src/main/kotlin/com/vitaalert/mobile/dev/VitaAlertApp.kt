@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.vitaalert.app.BuildConfig
 import com.vitaalert.mobile.dev.service.BleServiceConnector
 import com.vitaalert.mobile.dev.worker.CleanupWorker
 import com.vitaalert.mobile.dev.worker.SyncWorker
@@ -44,7 +45,7 @@ class VitaAlertApp : Application() {
     }
 
     private companion object {
-        const val CLEANUP_WORK_NAME = \"cleanup_vitals\"
-        const val SYNC_WORK_NAME = \"sync_pending_uploads\"
+        const val CLEANUP_WORK_NAME = "cleanup_vitals"
+        const val SYNC_WORK_NAME = "sync_pending_uploads"
     }
 }

@@ -1,5 +1,5 @@
 [versions]
-agp = "8.5.2"
+agp = "8.13.2"
 kotlin = "1.9.25"
 composeBom = "2024.06.00"
 hilt = "2.51.1"
