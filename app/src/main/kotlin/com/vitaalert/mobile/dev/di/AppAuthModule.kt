@@ -1,8 +1,9 @@
 package com.vitaalert.mobile.dev.di
 
 import android.content.Context
+import com.google.firebase.auth.FirebaseAuth
 import com.vitaalert.auth.repository.AuthRepository
-import com.vitaalert.auth.repository.FakeAuthRepository
+import com.vitaalert.auth.repository.FirebaseAuthRepository
 import com.vitaalert.auth.session.SessionManager
 import com.vitaalert.auth.storage.TokenStorage
 import dagger.Module
@@ -37,9 +38,12 @@ object AppAuthModule {
     }
 
     /**
-     * Provides the fake auth repository for runtime.
+     * Provides Firebase auth repository for production.
      */
     @Provides
     @Singleton
-    fun provideAuthRepository(): AuthRepository = FakeAuthRepository()
+    fun provideAuthRepository(
+        firebaseAuth: FirebaseAuth,
+        sessionManager: SessionManager
+    ): AuthRepository = FirebaseAuthRepository(firebaseAuth, sessionManager)
 }

@@ -12,9 +12,10 @@ import androidx.room.TypeConverters
         VitalReadingEntity::class,
         DeviceEntity::class,
         PendingUploadEntity::class,
-        DeviceProfileEntity::class
+        DeviceProfileEntity::class,
+        UserProfileEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(RoomConverters::class)
@@ -28,4 +29,9 @@ abstract class VitaAlertDatabase : RoomDatabase() {
      * Provides the DAO for pending uploads.
      */
     abstract fun pendingUploadDao(): PendingUploadDao
+
+    /**
+     * Provides the DAO for user profile.
+     */
+    abstract fun userProfileDao(): UserProfileDao
 }

@@ -51,3 +51,18 @@ data class DeviceProfileEntity(
     val deviceId: String,
     val createdAt: Instant
 )
+
+/**
+ * Entity representing the user profile.
+ */
+@Entity(tableName = "user_profile")
+data class UserProfileEntity(
+    @PrimaryKey val id: String,
+    val email: String,
+    val displayName: String,
+    val photoUri: String?,
+    val phoneNumber: String?,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+

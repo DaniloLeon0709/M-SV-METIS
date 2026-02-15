@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1095577281902",
+    "project_id": "m-sv-metis",
+    "storage_bucket": "m-sv-metis.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1095577281902:android:98744af709c4403e718d7f",
+        "android_client_info": {
+          "package_name": "com.vitaalert.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1095577281902-sfcv85eksm1ncm4lhghqaiskg471pln3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.vitaalert.app",
+            "certificate_hash": "ebe111b6c549d25b8ca0ca97b8d0388389e49a1c"
+          }
+        },
+        {
+          "client_id": "1095577281902-dv8ignv47r2dg5gh3d0u400quuei14vf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTpChmaFN9fPMhSWRv2L_Ywwhm5aomahs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1095577281902-dv8ignv47r2dg5gh3d0u400quuei14vf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

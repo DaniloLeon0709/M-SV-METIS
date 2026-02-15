@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,16 +31,22 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.MonitorHeart
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,6 +70,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -89,6 +98,13 @@ import com.vitaalert.designsystem.VitaAlertColors
 import com.vitaalert.domain.model.VitalReading
 import java.time.Duration
 import java.time.Instant
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 /**
  * Splash screen with animated logo and loading indicator.
@@ -177,6 +193,8 @@ fun SplashScreen(
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    onRegisterClick: () -> Unit = {},
+    onGoogleSignIn: () -> Unit = {},
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -359,14 +377,96 @@ fun LoginScreen(
                             }
                         }
                     }
+
+                    // Divider with "o continúa con"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        Text(
+                            text = "  o continúa con  ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
+
+                    // Google Sign In Button
+                    OutlinedButton(
+                        onClick = onGoogleSignIn,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Google Icon (using a simple G text as placeholder)
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .background(
+                                        color = Color.Transparent,
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "G",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF4285F4)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Continuar con Google",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 }
+            }
+
+            // Register link
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "¿No tienes una cuenta? ",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Regístrate",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = VitaAlertColors.Primary,
+                    modifier = Modifier.clickable { onRegisterClick() }
+                )
             }
 
             // Demo credentials hint
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ),
@@ -401,6 +501,9 @@ fun LoginScreen(
 @Composable
 fun HomeDashboardScreen(
     onDevicePairing: () -> Unit,
+    onProfileClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {},
+    onEmergencyClick: () -> Unit = {},
     viewModel: HomeDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -423,10 +526,42 @@ fun HomeDashboardScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = onProfileClick) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    VitaAlertColors.Primary.copy(alpha = 0.1f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Perfil",
+                                tint = VitaAlertColors.Primary
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
+        },
+        floatingActionButton = {
+            // Emergency button
+            androidx.compose.material3.FloatingActionButton(
+                onClick = onEmergencyClick,
+                containerColor = VitaAlertColors.VitalCritical,
+                contentColor = VitaAlertColors.OnPrimary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Emergencia"
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
@@ -437,6 +572,27 @@ fun HomeDashboardScreen(
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Quick actions row
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.History,
+                        label = "Historial",
+                        onClick = onHistoryClick
+                    )
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Bluetooth,
+                        label = "Dispositivos",
+                        onClick = onDevicePairing
+                    )
+                }
+            }
+
             // Vitals section header
             item {
                 SectionHeader(
@@ -494,15 +650,65 @@ fun HomeDashboardScreen(
                 }
             }
 
-            // Device pairing button
+            // View history button
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                PrimaryButton(
-                    text = "Emparejar dispositivo",
-                    onClick = onDevicePairing
+                SecondaryButton(
+                    text = "Ver historial completo",
+                    onClick = onHistoryClick,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(24.dp))
             }
+        }
+    }
+}
+
+/**
+ * Quick action card for dashboard.
+ */
+@Composable
+private fun QuickActionCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        VitaAlertColors.Primary.copy(alpha = 0.1f),
+                        RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = VitaAlertColors.Primary
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -518,6 +724,53 @@ fun DevicePairingScreen(
 ) {
     val devices by viewModel.devices.collectAsState()
     val demoMode by viewModel.demoMode.collectAsState()
+    val context = LocalContext.current
+
+    // Definir los permisos BLE requeridos según la versión de Android
+    val blePermissions = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+        }
+    }
+
+    // Función para verificar si los permisos están concedidos
+    fun hasBluetoothPermissions(): Boolean {
+        return blePermissions.all { permission ->
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    // Launcher para solicitar permisos
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            viewModel.startMonitoring()
+            Toast.makeText(context, "Monitoreo iniciado", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Se requieren permisos Bluetooth para el monitoreo", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Función para iniciar monitoreo con verificación de permisos
+    fun startMonitoringWithPermissions() {
+        if (hasBluetoothPermissions()) {
+            viewModel.startMonitoring()
+            Toast.makeText(context, "Monitoreo iniciado", Toast.LENGTH_SHORT).show()
+        } else {
+            permissionLauncher.launch(blePermissions)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -652,7 +905,7 @@ fun DevicePairingScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 PrimaryButton(
                     text = "Iniciar monitoreo",
-                    onClick = { viewModel.startMonitoring() }
+                    onClick = { startMonitoringWithPermissions() }
                 )
                 Spacer(modifier = Modifier.height(24.dp))
             }
