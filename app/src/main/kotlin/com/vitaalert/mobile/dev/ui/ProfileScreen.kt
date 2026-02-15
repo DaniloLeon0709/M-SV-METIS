@@ -560,21 +560,6 @@ private fun ChangePasswordBottomSheet(
                 }
             }
 
-            // Info card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = VitaAlertColors.Primary.copy(alpha = 0.1f)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = "💡 La contraseña actual de prueba es: Password123!",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 
             Spacer(modifier = Modifier.height(8.dp))
 

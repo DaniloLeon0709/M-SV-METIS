@@ -28,14 +28,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.BluetoothSearching
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
@@ -60,6 +65,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -71,6 +77,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -99,11 +106,18 @@ import com.vitaalert.domain.model.VitalReading
 import java.time.Duration
 import java.time.Instant
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.core.content.ContextCompat
 
 /**
@@ -198,8 +212,8 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var email by remember { mutableStateOf("user@test.com") }
-    var password by remember { mutableStateOf("Password123!") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     if (state.isSuccess) {
@@ -460,36 +474,6 @@ fun LoginScreen(
                     modifier = Modifier.clickable { onRegisterClick() }
                 )
             }
-
-            // Demo credentials hint
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "🔑 Credenciales de prueba",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "user@test.com / Password123!",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                    )
-                }
-            }
         }
     }
 }
@@ -714,7 +698,8 @@ private fun QuickActionCard(
 }
 
 /**
- * Device pairing screen with BLE devices list and demo mode.
+ * Device pairing screen - simplified version.
+ * Shows bonded devices and allows to start monitoring.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -723,7 +708,10 @@ fun DevicePairingScreen(
     viewModel: DevicePairingViewModel = hiltViewModel()
 ) {
     val devices by viewModel.devices.collectAsState()
-    val demoMode by viewModel.demoMode.collectAsState()
+    val isMonitoring by viewModel.isMonitoring.collectAsState()
+    val connectionStatus by viewModel.connectionStatus.collectAsState()
+    val connectedDevice by viewModel.connectedDevice.collectAsState()
+    val statusMessage by viewModel.statusMessage.collectAsState()
     val context = LocalContext.current
 
     // Definir los permisos BLE requeridos según la versión de Android
@@ -731,7 +719,8 @@ fun DevicePairingScreen(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(
                 Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.ACCESS_FINE_LOCATION
             )
         } else {
             arrayOf(
@@ -755,20 +744,55 @@ fun DevicePairingScreen(
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-            viewModel.startMonitoring()
-            Toast.makeText(context, "Monitoreo iniciado", Toast.LENGTH_SHORT).show()
+            viewModel.startScan()
         } else {
-            Toast.makeText(context, "Se requieren permisos Bluetooth para el monitoreo", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Se requieren permisos Bluetooth", Toast.LENGTH_LONG).show()
         }
     }
 
-    // Función para iniciar monitoreo con verificación de permisos
-    fun startMonitoringWithPermissions() {
-        if (hasBluetoothPermissions()) {
-            viewModel.startMonitoring()
-            Toast.makeText(context, "Monitoreo iniciado", Toast.LENGTH_SHORT).show()
+    // Función para abrir configuración Bluetooth del sistema
+    fun openBluetoothSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "No se pudo abrir la configuración Bluetooth", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Función para iniciar/detener monitoreo
+    fun toggleMonitoring() {
+        if (isMonitoring) {
+            viewModel.stopMonitoring()
+            Toast.makeText(context, "Monitoreo detenido", Toast.LENGTH_SHORT).show()
         } else {
-            permissionLauncher.launch(blePermissions)
+            if (devices.isEmpty()) {
+                Toast.makeText(context, "No hay dispositivos compatibles. Vincula un reloj desde configuración Bluetooth.", Toast.LENGTH_LONG).show()
+                return
+            }
+            if (hasBluetoothPermissions()) {
+                viewModel.startMonitoring()
+            } else {
+                permissionLauncher.launch(blePermissions)
+            }
+        }
+    }
+
+    // Cargar dispositivos al abrir la pantalla (solo si no estamos monitoreando)
+    LaunchedEffect(Unit) {
+        if (!isMonitoring) {
+            if (hasBluetoothPermissions()) {
+                viewModel.startScan()
+            } else {
+                permissionLauncher.launch(blePermissions)
+            }
+        }
+    }
+
+    // Detener escaneo al salir (pero no el monitoreo)
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopScan()
         }
     }
 
@@ -796,20 +820,170 @@ fun DevicePairingScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Demo mode card
-            item {
+            // Estado de conexión
+            ConnectionStatusCard(
+                status = connectionStatus,
+                isMonitoring = isMonitoring,
+                statusMessage = statusMessage
+            )
+
+            // Si está monitoreando, mostrar solo el dispositivo conectado
+            if (isMonitoring && connectedDevice != null) {
+                Text(
+                    text = "Dispositivo en uso",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (demoMode)
+                        containerColor = VitaAlertColors.VitalNormalLight
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(
+                                    VitaAlertColors.VitalNormal.copy(alpha = 0.2f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = VitaAlertColors.VitalNormal
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = connectedDevice!!.name,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = VitaAlertColors.VitalNormal
+                            )
+                            Text(
+                                text = "Monitoreando signos vitales",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = VitaAlertColors.VitalNormal
+                        )
+                    }
+                }
+            } else {
+                // Si no está monitoreando, mostrar opciones para conectar
+
+                // Estado para mostrar diálogos de info
+                var showHealthConnectInfo by remember { mutableStateOf(false) }
+                var showBleInfo by remember { mutableStateOf(false) }
+
+                // Diálogo de info de Health Connect
+                if (showHealthConnectInfo) {
+                    AlertDialog(
+                        onDismissRequest = { showHealthConnectInfo = false },
+                        title = { Text("¿Cómo funciona Health Connect?") },
+                        text = {
+                            Column {
+                                Text("Health Connect es el estándar de Google para compartir datos de salud entre aplicaciones.")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Funciona así:")
+                                Text("1. Tu reloj sincroniza datos con su app (Huawei Health, Samsung Health, etc.)")
+                                Text("2. Esa app comparte los datos con Health Connect")
+                                Text("3. VitaAlert lee los datos desde Health Connect")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("⚠️ Los datos no son en tiempo real exacto, dependen de la sincronización de tu app de salud.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showHealthConnectInfo = false }) {
+                                Text("Entendido")
+                            }
+                        }
+                    )
+                }
+
+                // Diálogo de info de BLE
+                if (showBleInfo) {
+                    AlertDialog(
+                        onDismissRequest = { showBleInfo = false },
+                        title = { Text("¿Cómo funciona la conexión BLE?") },
+                        text = {
+                            Column {
+                                Text("La conexión BLE directa lee datos en tiempo real desde dispositivos que exponen el servicio Heart Rate estándar (UUID 0x180D).")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Dispositivos compatibles:")
+                                Text("• Polar (H10, OH1, Verity Sense)")
+                                Text("• Garmin (HRM-Pro, HRM-Dual)")
+                                Text("• Wahoo (TICKR)")
+                                Text("• Algunos Fitbit y Samsung")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("⚠️ Huawei, Xiaomi y Apple Watch NO son compatibles porque usan protocolos propietarios.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showBleInfo = false }) {
+                                Text("Entendido")
+                            }
+                        }
+                    )
+                }
+
+                // Tarjeta de Health Connect
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            when {
+                                !viewModel.isHealthConnectInstalled -> {
+                                    // No está instalado, abrir Play Store
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(viewModel.getHealthConnectPlayStoreUrl()))
+                                    context.startActivity(intent)
+                                    Toast.makeText(context, "Instala Health Connect para continuar", Toast.LENGTH_LONG).show()
+                                }
+                                viewModel.healthConnectNeedsUpdate -> {
+                                    // Necesita actualización
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(viewModel.getHealthConnectPlayStoreUrl()))
+                                    context.startActivity(intent)
+                                    Toast.makeText(context, "Actualiza Health Connect para continuar", Toast.LENGTH_LONG).show()
+                                }
+                                viewModel.isHealthConnectAvailable -> {
+                                    // Disponible, iniciar monitoreo
+                                    viewModel.startHealthConnectMonitoring()
+                                    Toast.makeText(context, "Iniciando con Health Connect...", Toast.LENGTH_SHORT).show()
+                                }
+                                else -> {
+                                    Toast.makeText(context, "Health Connect no disponible", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (viewModel.isHealthConnectAvailable)
                             VitaAlertColors.VitalNormalLight
                         else
                             MaterialTheme.colorScheme.surfaceVariant
@@ -818,99 +992,430 @@ fun DevicePairingScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    if (viewModel.isHealthConnectAvailable)
+                                        VitaAlertColors.VitalNormal.copy(alpha = 0.2f)
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f),
+                                    RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = if (viewModel.isHealthConnectAvailable)
+                                    VitaAlertColors.VitalNormal
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Health Connect",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = if (viewModel.isHealthConnectAvailable)
+                                    VitaAlertColors.VitalNormal
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = when {
+                                    !viewModel.isHealthConnectInstalled -> "Toca para instalar desde Play Store"
+                                    viewModel.healthConnectNeedsUpdate -> "Toca para actualizar"
+                                    viewModel.isHealthConnectAvailable -> "Lee datos de Huawei Health, Samsung Health, etc."
+                                    else -> "No disponible"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        // Ícono de info
+                        IconButton(
+                            onClick = { showHealthConnectInfo = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Información",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        // Ícono de estado
+                        Icon(
+                            imageVector = when {
+                                !viewModel.isHealthConnectInstalled -> Icons.Default.Add
+                                viewModel.healthConnectNeedsUpdate -> Icons.Default.Refresh
+                                viewModel.isHealthConnectAvailable -> Icons.Default.CheckCircle
+                                else -> Icons.Default.Close
+                            },
+                            contentDescription = null,
+                            tint = if (viewModel.isHealthConnectAvailable)
+                                VitaAlertColors.VitalNormal
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Text(
+                    text = "— o conecta directamente —",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+
+                // Tarjeta de conexión BLE directa
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            viewModel.startMonitoring()
+                            Toast.makeText(context, "Buscando dispositivos BLE...", Toast.LENGTH_SHORT).show()
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    VitaAlertColors.Primary.copy(alpha = 0.1f),
+                                    RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bluetooth,
+                                contentDescription = null,
+                                tint = VitaAlertColors.Primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Conexión BLE directa",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Tiempo real con Polar, Garmin, Wahoo",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        // Ícono de info
+                        IconButton(
+                            onClick = { showBleInfo = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Información",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Bluetooth,
+                            contentDescription = null,
+                            tint = VitaAlertColors.Primary
+                        )
+                    }
+                }
+
+                // Dispositivos compatibles encontrados
+                if (devices.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Text(
+                            text = "Dispositivos compatibles",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "${devices.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Mostrar solo el primer dispositivo compatible
+                    val device = devices.first()
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
+                                    .size(44.dp)
                                     .background(
-                                        color = if (demoMode)
-                                            VitaAlertColors.VitalNormal.copy(alpha = 0.2f)
-                                        else
-                                            MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                                        shape = RoundedCornerShape(12.dp)
+                                        VitaAlertColors.Primary.copy(alpha = 0.1f),
+                                        CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Science,
+                                    imageVector = Icons.Default.Bluetooth,
                                     contentDescription = null,
-                                    tint = if (demoMode)
-                                        VitaAlertColors.VitalNormal
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = VitaAlertColors.Primary
                                 )
                             }
-
-                            Column {
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Modo Demo",
-                                    style = MaterialTheme.typography.titleMedium,
+                                    text = device.name ?: "Dispositivo",
+                                    style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = if (demoMode) "Activado" else "Datos simulados",
+                                    text = "Listo para conectar",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = VitaAlertColors.Primary
                                 )
                             }
                         }
-
-                        SecondaryButton(
-                            text = if (demoMode) "Activado ✓" else "Activar",
-                            onClick = { viewModel.setDemoMode(true) },
-                            modifier = Modifier.width(130.dp)
+                    }
+                } else {
+                    // No hay dispositivos compatibles
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bluetooth,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No hay dispositivos compatibles",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Vincula un reloj o pulsera con sensor de frecuencia cardíaca",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
 
-            // Divider
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            Spacer(modifier = Modifier.weight(1f))
 
-            // BLE Devices section
-            item {
-                SectionHeader(
-                    title = "Dispositivos BLE",
-                    subtitle = "Cercanos disponibles"
-                )
-            }
-
-            if (devices.isEmpty()) {
-                item {
-                    EmptyState(
-                        title = "Sin dispositivos",
-                        subtitle = "Activa Bluetooth y acerca un dispositivo compatible",
-                        icon = Icons.Default.BluetoothSearching
+            // Botón de iniciar/detener monitoreo
+            if (isMonitoring) {
+                // Botón de detener (rojo)
+                androidx.compose.material3.Button(
+                    onClick = { toggleMonitoring() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = VitaAlertColors.VitalCritical
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Detener monitoreo",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             } else {
-                items(devices) { device ->
-                    DeviceCard(
-                        name = device.name ?: "Dispositivo desconocido",
-                        subtitle = device.id,
-                        isConnected = false
-                    )
-                }
+                PrimaryButton(
+                    text = if (devices.isNotEmpty()) "Iniciar monitoreo" else "Vincular dispositivo primero",
+                    onClick = {
+                        if (devices.isEmpty()) {
+                            openBluetoothSettings()
+                        } else {
+                            toggleMonitoring()
+                        }
+                    }
+                )
             }
 
-            // Start monitoring button
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                PrimaryButton(
-                    text = "Iniciar monitoreo",
-                    onClick = { startMonitoringWithPermissions() }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+/**
+ * Card showing connection status.
+ */
+@Composable
+private fun ConnectionStatusCard(
+    status: ConnectionStatus,
+    isMonitoring: Boolean,
+    statusMessage: String = ""
+) {
+    val (backgroundColor, iconColor, icon, title) = when {
+        isMonitoring && status == ConnectionStatus.CONNECTED -> {
+            Tuple4(
+                VitaAlertColors.VitalNormalLight,
+                VitaAlertColors.VitalNormal,
+                Icons.Default.CheckCircle,
+                "Conectado y monitoreando"
+            )
+        }
+        isMonitoring && status == ConnectionStatus.CONNECTING -> {
+            Tuple4(
+                VitaAlertColors.Primary.copy(alpha = 0.1f),
+                VitaAlertColors.Primary,
+                Icons.Default.Bluetooth,
+                "Conectando..."
+            )
+        }
+        isMonitoring && status == ConnectionStatus.DISCONNECTED -> {
+            Tuple4(
+                VitaAlertColors.VitalAlertLight,
+                VitaAlertColors.VitalAlert,
+                Icons.Default.Warning,
+                "Conexión perdida"
+            )
+        }
+        else -> {
+            Tuple4(
+                MaterialTheme.colorScheme.surfaceVariant,
+                MaterialTheme.colorScheme.onSurfaceVariant,
+                Icons.Default.BluetoothDisabled,
+                "Sin monitoreo activo"
+            )
+        }
+    }
+
+    // Usar el mensaje de estado si está disponible, sino uno por defecto
+    val subtitle = if (statusMessage.isNotEmpty()) {
+        statusMessage
+    } else {
+        when {
+            isMonitoring && status == ConnectionStatus.CONNECTED -> "Recibiendo datos del dispositivo"
+            isMonitoring && status == ConnectionStatus.CONNECTING -> "Buscando dispositivo..."
+            isMonitoring && status == ConnectionStatus.DISCONNECTED -> "Intentando reconectar..."
+            else -> "Inicia el monitoreo para conectar"
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isMonitoring && status == ConnectionStatus.CONNECTING) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = iconColor,
+                    strokeWidth = 3.dp
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (backgroundColor == MaterialTheme.colorScheme.surfaceVariant)
+                        MaterialTheme.colorScheme.onSurface
+                    else iconColor
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
+}
+
+/**
+ * Simple data class for status card info.
+ */
+private data class Tuple4<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
+
+private data class Tuple5<A, B, C, D, E>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E
+)
+
+/**
+ * Connection status enum.
+ */
+enum class ConnectionStatus {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED
 }
 
 @Composable

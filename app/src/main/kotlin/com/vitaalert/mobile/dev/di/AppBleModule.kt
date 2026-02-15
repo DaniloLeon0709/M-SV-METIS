@@ -1,5 +1,6 @@
 package com.vitaalert.mobile.dev.di
 
+import android.content.Context
 import com.vitaalert.ble.demo.DemoVitalSource
 import com.vitaalert.ble.gatt.BleGattClient
 import com.vitaalert.ble.scanner.BleScanner
@@ -11,6 +12,7 @@ import com.vitaalert.mobile.dev.service.BleServiceConnector
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +28,7 @@ object AppBleModule {
      */
     @Provides
     @Singleton
-    fun provideBleScanner(): BleScanner = BleScanner()
+    fun provideBleScanner(@ApplicationContext context: Context): BleScanner = BleScanner(context)
 
     /**
      * Provides the BLE GATT client.
@@ -52,11 +54,14 @@ object AppBleModule {
     }
 
     /**
-     * Provides the BLE vital source stub.
+     * Provides the BLE vital source.
      */
     @Provides
     @Singleton
-    fun provideBleVitalSource(): BleVitalSource = BleVitalSource()
+    fun provideBleVitalSource(
+        @ApplicationContext context: Context,
+        gattClient: BleGattClient
+    ): BleVitalSource = BleVitalSource(context, gattClient)
 
     /**
      * Provides the service connector.

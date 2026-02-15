@@ -16,7 +16,7 @@ class BleServiceConnector(
     private val demoSource: DemoVitalSourceAdapter,
     private val bleSource: BleVitalSource
 ) {
-    private val _demoMode = MutableStateFlow(true)
+    private val _demoMode = MutableStateFlow(false)
 
     /**
      * Exposes the current demo mode setting.

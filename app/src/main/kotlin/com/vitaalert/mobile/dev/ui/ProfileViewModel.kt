@@ -3,6 +3,7 @@ package com.vitaalert.mobile.dev.ui
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
 import com.vitaalert.auth.session.SessionManager
 import com.vitaalert.data.repository.FirebaseProfileRepository
 import com.vitaalert.data.repository.UserProfileRepositoryImpl
@@ -35,7 +36,8 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val userProfileRepository: UserProfileRepositoryImpl,
     private val firebaseProfileRepository: FirebaseProfileRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -61,9 +63,12 @@ class ProfileViewModel @Inject constructor(
                     profile = userProfileRepository.getProfile()
                 }
 
-                // If still no profile, create initial one
+                // If still no profile, create initial one from Firebase Auth user
                 if (profile == null) {
-                    profile = userProfileRepository.createInitialProfile("user@test.com", "Usuario")
+                    val currentUser = firebaseAuth.currentUser
+                    val email = currentUser?.email ?: ""
+                    val displayName = currentUser?.displayName ?: "Usuario"
+                    profile = userProfileRepository.createInitialProfile(email, displayName)
                     // Sync to Firebase
                     try {
                         firebaseProfileRepository.saveProfile(profile)

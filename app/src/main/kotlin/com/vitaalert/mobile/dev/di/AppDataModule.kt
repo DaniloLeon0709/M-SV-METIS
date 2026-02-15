@@ -41,12 +41,28 @@ object AppDataModule {
     }
 
     /**
+     * Provides Firebase vital repository for syncing vitals.
+     */
+    @Provides
+    @Singleton
+    fun provideFirebaseVitalRepository(
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth,
+        vitalThresholds: VitalThresholds
+    ): FirebaseVitalRepository {
+        return FirebaseVitalRepository(firestore, auth, vitalThresholds)
+    }
+
+    /**
      * Provides the vital repository.
      */
     @Provides
     @Singleton
-    fun provideVitalRepository(database: VitaAlertDatabase): VitalRepository {
-        return VitalRepositoryImpl(database.vitalReadingDao())
+    fun provideVitalRepository(
+        database: VitaAlertDatabase,
+        firebaseVitalRepository: FirebaseVitalRepository
+    ): VitalRepository {
+        return VitalRepositoryImpl(database.vitalReadingDao(), firebaseVitalRepository)
     }
 
     /**
@@ -92,18 +108,5 @@ object AppDataModule {
         auth: FirebaseAuth
     ): FirebaseProfileRepository {
         return FirebaseProfileRepository(firestore, storage, auth)
-    }
-
-    /**
-     * Provides Firebase vital repository for cloud sync.
-     */
-    @Provides
-    @Singleton
-    fun provideFirebaseVitalRepository(
-        firestore: FirebaseFirestore,
-        auth: FirebaseAuth,
-        vitalThresholds: VitalThresholds
-    ): FirebaseVitalRepository {
-        return FirebaseVitalRepository(firestore, auth, vitalThresholds)
     }
 }

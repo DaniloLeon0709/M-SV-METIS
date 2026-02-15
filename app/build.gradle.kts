@@ -88,6 +88,9 @@ dependencies {
     // Google Sign-In
     implementation(libs.play.services.auth)
 
+    // Health Connect
+    implementation(libs.health.connect)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
