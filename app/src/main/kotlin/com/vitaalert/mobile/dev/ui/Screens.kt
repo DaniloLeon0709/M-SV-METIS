@@ -492,6 +492,91 @@ fun HomeDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val hrSeries by viewModel.heartRateSeries.collectAsState(initial = emptyList())
+    val context = LocalContext.current
+
+    // Estado para mostrar diálogo de emergencia
+    var showEmergencyDialog by remember { mutableStateOf(false) }
+
+    // Diálogo de confirmación de emergencia
+    if (showEmergencyDialog) {
+        AlertDialog(
+            onDismissRequest = { showEmergencyDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(
+                            VitaAlertColors.VitalCritical.copy(alpha = 0.1f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = VitaAlertColors.VitalCritical,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = "¿Llamar a Emergencias?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Esto llamará al número de emergencias 123",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Se compartirá tu ubicación actual con los servicios de emergencia",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        showEmergencyDialog = false
+                        // Llamar a emergencias (123 en Colombia)
+                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                            data = Uri.parse("tel:123")
+                        }
+                        context.startActivity(intent)
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = VitaAlertColors.VitalCritical
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Llamar 123")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmergencyDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -537,7 +622,7 @@ fun HomeDashboardScreen(
         floatingActionButton = {
             // Emergency button
             androidx.compose.material3.FloatingActionButton(
-                onClick = onEmergencyClick,
+                onClick = { showEmergencyDialog = true },
                 containerColor = VitaAlertColors.VitalCritical,
                 contentColor = VitaAlertColors.OnPrimary
             ) {

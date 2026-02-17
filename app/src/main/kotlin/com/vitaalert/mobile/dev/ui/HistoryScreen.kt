@@ -355,6 +355,19 @@ private fun StatCard(
 
 @Composable
 private fun HistoryChart(readings: List<VitalReading>, type: VitalType) {
+    // Verificar que hay datos
+    if (readings.isEmpty()) return
+
+    // Limitar a máximo 100 puntos para el gráfico
+    val chartReadings = if (readings.size > 100) {
+        val step = readings.size / 100
+        readings.filterIndexed { index, _ -> index % step == 0 }.take(100)
+    } else {
+        readings
+    }
+
+    if (chartReadings.isEmpty()) return
+
     val chartColor = when (type) {
         VitalType.HR -> "#F9C642"
         VitalType.SPO2 -> "#4CAF50"
@@ -399,26 +412,42 @@ private fun HistoryChart(readings: List<VitalReading>, type: VitalType) {
                 }
             },
             update = { chart ->
-                val entries = readings.mapIndexed { index, reading ->
-                    Entry(index.toFloat(), reading.value.toFloat())
-                }.reversed()
+                try {
+                    if (chartReadings.isEmpty()) {
+                        chart.clear()
+                        return@AndroidView
+                    }
 
-                val dataSet = LineDataSet(entries, "").apply {
-                    color = chartColor.toColorInt()
-                    setDrawCircles(true)
-                    circleRadius = 3f
-                    setCircleColor(chartColor.toColorInt())
-                    lineWidth = 2.5f
-                    mode = LineDataSet.Mode.CUBIC_BEZIER
-                    setDrawFilled(true)
-                    fillColor = chartColor.toColorInt()
-                    fillAlpha = 50
-                    setDrawValues(false)
+                    val entries = chartReadings
+                        .sortedBy { it.timestamp }
+                        .mapIndexed { index, reading ->
+                            Entry(index.toFloat(), reading.value.toFloat())
+                        }
+
+                    if (entries.isEmpty()) {
+                        chart.clear()
+                        return@AndroidView
+                    }
+
+                    val dataSet = LineDataSet(entries, "").apply {
+                        color = chartColor.toColorInt()
+                        setDrawCircles(entries.size <= 20)
+                        circleRadius = 3f
+                        setCircleColor(chartColor.toColorInt())
+                        lineWidth = 2.5f
+                        mode = LineDataSet.Mode.CUBIC_BEZIER
+                        setDrawFilled(true)
+                        fillColor = chartColor.toColorInt()
+                        fillAlpha = 50
+                        setDrawValues(false)
+                    }
+
+                    chart.data = LineData(dataSet)
+                    chart.animateX(500)
+                    chart.invalidate()
+                } catch (e: Exception) {
+                    chart.clear()
                 }
-
-                chart.data = LineData(dataSet)
-                chart.animateX(500)
-                chart.invalidate()
             }
         )
     }

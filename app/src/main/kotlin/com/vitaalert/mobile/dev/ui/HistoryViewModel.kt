@@ -7,9 +7,11 @@ import com.vitaalert.domain.model.VitalType
 import com.vitaalert.domain.repository.VitalRepository
 import com.vitaalert.domain.service.VitalThresholds
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -61,6 +63,8 @@ class HistoryViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
         loadHistory()
     }
@@ -82,23 +86,32 @@ class HistoryViewModel @Inject constructor(
     }
 
     private fun loadHistory() {
-        viewModelScope.launch {
+        // Cancel any previous loading job
+        loadJob?.cancel()
+
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val now = Instant.now()
-            val from = now.minus(_uiState.value.selectedPeriod.hours, ChronoUnit.HOURS)
-            val type = _uiState.value.selectedType
-
             try {
-                vitalRepository.observeRangeByType(type, from, now).collect { readings ->
-                    val stats = calculateStats(readings, type)
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            readings = readings.sortedByDescending { r -> r.timestamp },
-                            stats = stats
-                        )
-                    }
+                val now = Instant.now()
+                val from = now.minus(_uiState.value.selectedPeriod.hours, ChronoUnit.HOURS)
+                val type = _uiState.value.selectedType
+
+                // Use first() to get a single snapshot instead of continuous collection
+                val readings = vitalRepository.observeRangeByType(type, from, now).first()
+
+                // Limitar a los últimos 500 registros para evitar problemas de memoria
+                val limitedReadings = readings
+                    .sortedByDescending { r -> r.timestamp }
+                    .take(500)
+
+                val stats = calculateStats(limitedReadings, type)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        readings = limitedReadings,
+                        stats = stats
+                    )
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
@@ -131,6 +144,11 @@ class HistoryViewModel @Inject constructor(
             alertCount = alertCount,
             criticalCount = criticalCount
         )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        loadJob?.cancel()
     }
 }
 
